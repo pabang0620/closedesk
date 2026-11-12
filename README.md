@@ -2,7 +2,9 @@
 
 # CloseDesk
 
-**Try it:** https://closedesk.35-216-2-121.sslip.io (hosted demo: mock PayPal, recorded Claude Sonnet runs; no login).
+**Demo video:** https://youtu.be/mST0-y1Vm6g | **Hosted demo:** https://closedesk.35-216-2-121.sslip.io | **Devpost:** https://devpost.com/software/closedesk
+
+**Try it:** https://closedesk.35-216-2-121.sslip.io (hosted demo: mock PayPal, live Claude Sonnet (`claude-sonnet-5-5`) with per-IP-hour and per-day caps; when the API fails or a cap is hit it falls back to a labelled recorded run or a rule-based stand-in; no login).
 
 CloseDesk checks PayPal against what a seller promised customers (orders, coupons, support replies), every day, and turns each gap, like the refund support promised but never sent, into one owner-approved PayPal action, so the month-end close is signed with $0.00 unexplained.
 
