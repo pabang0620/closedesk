@@ -1,5 +1,6 @@
 import { config } from '../config.js'
 import { getAnthropic } from './anthropicClient.js'
+import { compatBody, requiredOf, satisfied } from './toolChoice.js'
 import { replayStudioTurn, recordStudioTurn } from './recordedRuns.js'
 
 // Translation between AG Studio's provider-neutral turn format (AgLlmRequest / AgLlmResponse) and
@@ -129,8 +130,12 @@ export async function handleStudioTurn(request, { client = getAnthropic(), recor
     return { response: mockStudioTurn(request), mode: 'mock', label: 'Stand-in (no model)' }
   }
   const body = toAnthropicRequest(request)
+  const required = requiredOf(body.tool_choice)
   const started = Date.now()
-  const response = fromAnthropicResponse(await client.messages.create(body), request)
+  let raw = await client.messages.create(compatBody(body, required))
+  if (!satisfied(raw, required)) raw = await client.messages.create(compatBody(body, required, { repeat: true }))
+  if (!satisfied(raw, required)) return { response: mockStudioTurn(request), mode: 'mock', label: 'Stand-in (model did not call the required tool)' }
+  const response = fromAnthropicResponse(raw, request)
   if (record) recordStudioTurn(request, response, Date.now() - started)
   return { response, mode: 'live' }
 }

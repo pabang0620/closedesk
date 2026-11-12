@@ -80,7 +80,12 @@ export function createRoutes({ periods }) {
       const sessionId = sessionOf(req)
       const existing = getCloseForSession(sessionId)
       if (existing && !existing.signed) return res.json({ success: true, data: viewOf(existing) })
-      const { period, limited, exhausted } = periods.assign(`${sessionId}${existing ? `-${Date.now()}` : ''}`)
+      const key = `${sessionId}${existing ? `-${Date.now()}` : ''}`
+      let { period, limited, exhausted } = periods.assign(key)
+      if (exhausted && periods.topUpSoon) {
+        await periods.topUpSoon()
+        ;({ period, limited, exhausted } = periods.assign(key))
+      }
       if (!period) throw new HttpError(503, periods.lastError() || 'No prepared period is available right now. Try again in a few minutes.', 'NO_PERIOD')
       const close = createClose({ sessionId, period, books: structuredClone(period.books) })
       await dailyCheck(close, deps())

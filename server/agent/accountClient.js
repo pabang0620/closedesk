@@ -45,8 +45,7 @@ export function createAccountClient({ sdk, model = config.anthropicModel, env = 
       calls.push({ type: 'tool_use', id: `toolu_acct_${(counter += 1)}`, name: def.name, input })
       return { content: [{ type: 'text', text: 'Recorded. The caller runs this tool and reports back in the next turn.' }] }
     }))
-    const forced = body.tool_choice?.type === 'any' ? '\nYou must call a tool in this turn.' : ''
-    const system = `${typeof body.system === 'string' ? body.system : ''}${forced}\nAlways answer in English. Call only the tools you need in this turn. After you call tools, stop: the results come back in the next turn.`
+    const system = `${typeof body.system === 'string' ? body.system : ''}\nAlways answer in English. Call only the tools you need in this turn. After you call tools, stop: the results come back in the next turn.`
     const stream = agentSdk.query({
       prompt: `${transcriptOf(body.messages)}\n\nContinue as the Assistant.`,
       options: {

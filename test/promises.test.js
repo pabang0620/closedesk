@@ -54,7 +54,8 @@ test('Claude extractor forces record_promise and reads tool_use blocks', async (
     },
   }
   const out = await createClaudeExtractor(client, 'test-model')(msg('Refunded it.'))
-  assert.equal(requests[0].tool_choice.type, 'any')
+  assert.equal(requests[0].tool_choice.type, 'auto')
+  assert.match(requests[0].system, /You must answer by calling the tool record_promise/)
   assert.deepEqual(requests[0].tools, [RECORD_PROMISE_TOOL])
   assert.equal(RECORD_PROMISE_TOOL.input_schema.properties.amount, undefined)
   assert.deepEqual(out, [{ claimsDone: true, type: 'refund', quote: 'Refunded it.' }])

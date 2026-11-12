@@ -117,9 +117,19 @@ export function createPeriodManager({ paypal, now = () => Date.now(), targetRead
     if (assignedToday.day !== day) assignedToday = { day, count: 0 }
     if (assignedToday.count >= assignPerDay) return { period: closedView(), limited: true }
     const pick = takeOne(['ready'], sessionId) || takeOne(['seeded'], sessionId)
-    if (!pick) return { period: closedView(), exhausted: true }
+    if (!pick) { topUpSoon(); return { period: closedView(), exhausted: true } }
     assignedToday.count += 1
+    topUpSoon()
     return { period: pick }
+  }
+
+  // Refill in the background as soon as fresh periods run low, instead of waiting for the timer.
+  let toppingUp = null
+  function topUpSoon() {
+    const fresh = [...periods.values()].filter((p) => ['seeded', 'ready'].includes(p.status) && !p.assignedTo).length
+    if (fresh >= 2 || toppingUp || !useCard) return toppingUp
+    toppingUp = safeReplenish().finally(() => { toppingUp = null })
+    return toppingUp
   }
 
   // When nothing is left, show the oldest used period read-only. New actions are blocked.
@@ -128,5 +138,5 @@ export function createPeriodManager({ paypal, now = () => Date.now(), targetRead
     return used ? { ...used, readOnly: true } : null
   }
 
-  return { periods, seedOne, refresh, replenish, safeReplenish, loadPrepared, lastError: () => lastError, discardStale, assign, closedView, stats: () => Object.groupBy([...periods.values()], (p) => p.status) }
+  return { periods, seedOne, refresh, replenish, safeReplenish, loadPrepared, lastError: () => lastError, discardStale, assign, topUpSoon, closedView, stats: () => Object.groupBy([...periods.values()], (p) => p.status) }
 }

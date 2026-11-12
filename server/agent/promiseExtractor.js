@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { config } from '../config.js'
-import { PROMISE_TYPES } from '../close/promises.js'
+import { PROMISE_TYPES, extractPromisesRules } from '../close/promises.js'
+import { createRequiring } from './toolChoice.js'
 
 export const PROMISE_SYSTEM = `You read one message that a shop's support agent wrote to a customer. Decide whether the shop promised something about money.
 Types: refund (the shop says it refunded, or will refund), discount (a coupon or price cut is applied or will be), cancel (the order is cancelled), none.
@@ -30,16 +31,17 @@ export const RECORD_PROMISE_TOOL = {
 
 // Extractor backed by Claude. Returns the raw array that promises.js validates; a quote that is
 // not literally in the message is dropped there.
-export function createClaudeExtractor(client, model = config.anthropicModel) {
+export function createClaudeExtractor(client, model = config.anthropicModel, fallback = extractPromisesRules) {
   return async (message) => {
-    const response = await client.messages.create({
+    const { response, ok } = await createRequiring(client, {
       model,
       max_tokens: 800,
       system: PROMISE_SYSTEM,
       tools: [RECORD_PROMISE_TOOL],
-      tool_choice: { type: 'any' },
       messages: [{ role: 'user', content: `Support message:\n"""${message.text}"""` }],
-    })
+    }, { name: RECORD_PROMISE_TOOL.name })
+    // The model never called the tool, even after one retry: read this message with the rules (labelled by the caller).
+    if (!ok) return fallback(message)
     return response.content
       .filter((b) => b.type === 'tool_use' && b.name === 'record_promise')
       .map((b) => inputSchema.safeParse(b.input))
