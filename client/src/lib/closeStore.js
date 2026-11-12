@@ -46,7 +46,7 @@ export const closeActions = {
   ownerLink: (actionId) => guard(async () => {
     const data = await api(`/actions/${actionId}/owner-link`, { method: 'POST' })
     await load(data.view)
-    set({ ownerUrl: { actionId, url: data.url } })
+    set({ ownerUrl: { actionId, url: data.url, expiresAtMs: Date.now() + data.expiresInMinutes * 60_000 } })
     return data.url
   }),
   bookkeeperApprove: (actionId) => guard(async () => load(await api(`/actions/${actionId}/approve`, { method: 'POST' }))),

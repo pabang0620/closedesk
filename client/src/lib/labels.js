@@ -27,3 +27,10 @@ const ID_LABEL = { refundId: 'Refund', captureId: 'Capture', authId: 'Hold', inv
 export const idLabel = (key) => ID_LABEL[key] || key.replace(/([A-Z])/g, ' $1').toLowerCase()
 
 export const when = (value) => new Date(value).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
+
+// "Ask the Close Agent why" answers run 15 lines or more. The card shows the first few and folds the rest.
+export const EXPLAIN_SUMMARY_LINES = 3
+export function splitExplanation(reply, keep = EXPLAIN_SUMMARY_LINES) {
+  const lines = (reply || '').split('\n').map((line) => line.replace(/\*\*/g, '').trim()).filter(Boolean)
+  return { summary: lines.slice(0, keep), rest: lines.slice(keep) }
+}

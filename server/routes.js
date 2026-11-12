@@ -8,15 +8,19 @@ import { runDailyCheck } from './close/check.js'
 import { proposeAction, createOwnerLink, ownerDecide, bookkeeperApprove, signClose } from './close/actions.js'
 import { readOwnerToken } from './close/approvals.js'
 import { closeView, studioTables, packageView, merchantLabel } from './close/view.js'
-import { explainException } from './agent/explain.js'
+import { explainException, replayAsk } from './agent/explain.js'
 import { handleStudioTurn } from './agent/studioTurn.js'
 import { createClaudeExtractor } from './agent/promiseExtractor.js'
+import { extractPromisesRules } from './close/promises.js'
+import { readRun, writeRun, newRun, labelOf, recordingClient, recordedExtractor, idMapOf } from './agent/recordedRuns.js'
 import { getAnthropic } from './agent/anthropicClient.js'
 import { chatLimiter } from './demoLimits.js'
 import { formatUsd } from './util/money.js'
 import { runToolLoop } from './agent/claudeLoop.js'
 import { closeAgentTools, makeToolRunner, CLOSE_AGENT_SYSTEM, TOOLKIT_TOOL_NAMES } from './agent/tools.js'
 import { dataCompleteness } from './close/completeness.js'
+
+const LIVE_LABEL = { live: 'Claude (API)', account: 'Claude Sonnet (local account)' }
 
 function sessionOf(req) {
   const id = parse(sessionHeader, req.get('x-session-id'))
@@ -29,10 +33,37 @@ function requireClose(req) {
   return close
 }
 
-const viewOf = (close) => closeView(close, { mode: modes })
-const extractorFor = () => {
+const recordedLabel = () => {
+  if (modes.llm !== 'mock') return null
+  const run = readRun('daily-check') || readRun('ask-E1')
+  return run ? labelOf(run) : null
+}
+const viewOf = (close) => closeView(close, { mode: modes, recordedLabel: recordedLabel() })
+
+// Who reads the support replies: the model, a recorded real run of the model (no model configured), or the rules.
+function promiseReader() {
   const client = getAnthropic()
-  return client ? createClaudeExtractor(client) : undefined
+  if (client && config.recordRuns) {
+    const messages = []
+    const extractor = async (message) => {
+      const turns = []
+      const out = await createClaudeExtractor(recordingClient(client, turns))(message)
+      messages.push({ id: message.id, text: message.text, ms: turns.reduce((s, t) => s + t.ms, 0), toolCalls: turns.flatMap((t) => t.toolCalls), modelText: turns.map((t) => t.text).join('\n') })
+      return out
+    }
+    return { extractor, source: () => 'model', save: () => writeRun('daily-check', newRun('daily-check', { messages })) }
+  }
+  if (client) return { extractor: createClaudeExtractor(client), source: () => 'model' }
+  const run = readRun('daily-check')
+  if (!run) return { extractor: undefined, source: () => 'rules (no model key)' }
+  const { extractor, misses } = recordedExtractor(run, extractPromisesRules)
+  return { extractor, source: () => `${labelOf(run)}${misses.length ? `; ${misses.length} unrecorded message(s) read by rules` : ''}` }
+}
+
+async function dailyCheck(close, deps) {
+  const reader = promiseReader()
+  await runDailyCheck(close, { ...deps, extractor: reader.extractor, promiseSource: reader.source })
+  reader.save?.()
 }
 
 export function createRoutes({ periods }) {
@@ -52,7 +83,7 @@ export function createRoutes({ periods }) {
       const { period, limited, exhausted } = periods.assign(`${sessionId}${existing ? `-${Date.now()}` : ''}`)
       if (!period) throw new HttpError(503, periods.lastError() || 'No prepared period is available right now. Try again in a few minutes.', 'NO_PERIOD')
       const close = createClose({ sessionId, period, books: structuredClone(period.books) })
-      await runDailyCheck(close, { ...deps(), extractor: extractorFor() })
+      await dailyCheck(close, deps())
       res.json({ success: true, data: { ...viewOf(close), notice: limited ? 'Daily limit reached: showing a closed period.' : exhausted ? 'All prepared periods are used: showing a closed period.' : undefined } })
     } catch (err) { next(err) }
   })
@@ -64,7 +95,7 @@ export function createRoutes({ periods }) {
   router.post('/close/check', async (req, res, next) => {
     try {
       const close = requireClose(req)
-      await runDailyCheck(close, { ...deps(), extractor: extractorFor() })
+      await dailyCheck(close, deps())
       res.json({ success: true, data: viewOf(close) })
     } catch (err) { next(err) }
   })
@@ -116,6 +147,7 @@ export function createRoutes({ periods }) {
           action: card.action,
           amountCents: card.amountCents,
           amountText: formatUsd(card.amountCents),
+          heldText: ex.heldCents ? formatUsd(ex.heldCents) : null,
           amountSource: card.amountSource,
           title: ex.title,
           orderNo: ex.orderNo,
@@ -162,16 +194,24 @@ export function createRoutes({ periods }) {
       if (exceptionId && !close.exceptions.some((e) => e.id === exceptionId)) throw new HttpError(404, 'Exception not found.', 'NOT_FOUND')
       const client = req.demoLimited ? null : getAnthropic()
       if (!client) {
+        const run = exceptionId ? readRun(`ask-${exceptionId}`) : null
+        if (run) {
+          const currentIds = await idMapOf(close, getPaypal())
+          return res.json({ success: true, data: { ...(await replayAsk(close, run, { now: Date.now(), runTool: makeToolRunner(close), currentIds, label: labelOf(run) })), mode: 'recorded' } })
+        }
         if (exceptionId) return res.json({ success: true, data: { ...(await explainException(close, exceptionId, { now: Date.now() })), mode: 'mock' } })
         const b = viewOf(close).bridge
-        return res.json({ success: true, data: { reply: `Unexplained ${formatUsd(b.unexplainedCents)} across ${b.openCount} open exceptions.`, mode: 'mock', events: [] } })
+        return res.json({ success: true, data: { reply: `Unexplained ${formatUsd(b.unexplainedCents)} across ${b.openCount} open exceptions.`, mode: 'mock', label: 'Computed by code (no model)', events: [] } })
       }
       const ex = exceptionId ? close.exceptions.find((e) => e.id === exceptionId) : null
       const content = ex ? `Exception ${ex.id} (${ex.title}, order ${ex.orderNo || 'none'}): ${ex.narrative}\n${question}` : question
-      const out = await runToolLoop({ client, model: config.anthropicModel, system: CLOSE_AGENT_SYSTEM, tools: closeAgentTools(), runTool: makeToolRunner(close), messages: [{ role: 'user', content }] })
+      const turns = []
+      const loopClient = config.recordRuns ? recordingClient(client, turns) : client
+      const out = await runToolLoop({ client: loopClient, model: config.anthropicModel, system: CLOSE_AGENT_SYSTEM, tools: closeAgentTools(), runTool: makeToolRunner(close), messages: [{ role: 'user', content }] })
+      if (config.recordRuns && exceptionId) writeRun(`ask-${exceptionId}`, newRun('ask', { exceptionId, question, content, idMap: await idMapOf(close, getPaypal()), turns, reply: out.reply }))
       const events = out.events.map((e) => ({ ...e, source: e.tool in TOOLKIT_TOOL_NAMES ? 'agent-toolkit' : 'code' }))
       close.trace = [...close.trace, ...events.map((e) => ({ tool: e.tool, input: e.input, output: e.ok ? 'ok' : 'failed', source: e.source, atMs: Date.now() }))]
-      res.json({ success: true, data: { reply: out.reply, mode: modes.llm, events } })
+      res.json({ success: true, data: { reply: out.reply, mode: modes.llm, label: LIVE_LABEL[modes.llm], events } })
     } catch (err) { next(err) }
   })
 

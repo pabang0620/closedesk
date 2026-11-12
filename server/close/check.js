@@ -8,7 +8,7 @@ import { modes } from '../config.js'
 // -> get_invoice -> classify_exception. Detection itself is deterministic code.
 // Each trace line names what really ran: books, support, rules or model (promise reading), code, the PayPal SDK or REST
 // (the mock when no keys are set), or agent-toolkit (only the "Ask the Close Agent why" reads).
-export async function runDailyCheck(close, { paypal, extractor, now = () => Date.now(), forceMode, hypothesizer } = {}) {
+export async function runDailyCheck(close, { paypal, extractor, now = () => Date.now(), forceMode, hypothesizer, promiseSource } = {}) {
   const trace = []
   const paypalSource = modes.paypal === 'sandbox' ? 'paypal-sdk' : 'paypal-mock'
   const step = (tool, input, output, source = 'books') => trace.push({ tool, input, output, source, atMs: now() })
@@ -20,7 +20,7 @@ export async function runDailyCheck(close, { paypal, extractor, now = () => Date
   step('get_support_thread', { orders: withThreads.length }, `${withThreads.reduce((s, t) => s + t.messages.length, 0)} messages`, 'support')
 
   const promises = await collectPromises({ threads: books.threads, extractor })
-  step('record_promise', { messages: 'agent replies' }, `${promises.length} promises: ${promises.map((p) => `${p.orderNo} ${p.type}`).join(', ')}`, extractor ? 'model' : 'rules (no model key)')
+  step('record_promise', { messages: 'agent replies' }, `${promises.length} promises: ${promises.map((p) => `${p.orderNo} ${p.type}`).join(', ')}`, promiseSource ? promiseSource() : extractor ? 'model' : 'rules (no model key)')
 
   const calls = []
   const ledger = await loadLedger({ paypal, books, period, nowMs: now(), trace: (c) => calls.push(c), forceMode })

@@ -30,6 +30,11 @@ export const config = {
   seedWithCard: process.env.SEED_WITH_CARD === '1',
   // Prepared sandbox periods written by scripts/seed-period.js. The server reads them at start.
   periodsDir: process.env.PERIODS_DIR || path.resolve(here, '../data/periods'),
+  // Recorded real model runs (builtin/recorded-runs). Replayed when no model is configured; REPLAY_RECORDED_RUNS=0 turns that off.
+  recordedRunsDir: process.env.RECORDED_RUNS_DIR || path.resolve(here, '../builtin/recorded-runs'),
+  replayRecordedRuns: process.env.REPLAY_RECORDED_RUNS !== '0',
+  // RECORD_RUNS=1 with a real model saves each AI scene there (developer use, see VERIFY item 17).
+  recordRuns: process.env.RECORD_RUNS === '1' && !forceMock,
 }
 
 export const modes = {

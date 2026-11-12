@@ -12,6 +12,16 @@ const INTERNAL = [
   { name: 'classify_exception', description: 'Record a hypothesis for an exception. No amount field.', input_schema: { type: 'object', properties: { ref: { type: 'string' }, hypothesis: { type: 'string' }, evidence_ids: { type: 'array', items: { type: 'string' } } }, required: ['ref', 'hypothesis'] } },
 ]
 
+// Keeps whole sentences only, so a long model hypothesis never ends mid-word on the card or in the package.
+export const HYPOTHESIS_MAX = 1000
+export function clipSentences(text, max = HYPOTHESIS_MAX) {
+  const value = String(text).trim()
+  if (value.length <= max) return value
+  const head = value.slice(0, max)
+  const end = Math.max(head.lastIndexOf('. '), head.lastIndexOf('.\n'))
+  return end > 0 ? head.slice(0, end + 1) : `${head.slice(0, head.lastIndexOf(' '))}...`
+}
+
 export const TOOLKIT_TOOL_NAMES = { list_transactions: true, get_order: true, get_invoice: true, search_invoicing: true }
 export const closeAgentTools = () => [...INTERNAL, ...Object.keys(TOOLKIT_TOOL_NAMES).map(toolkitSchema)]
 
@@ -24,7 +34,7 @@ export function makeToolRunner(close) {
       case 'classify_exception': {
         const ex = close.exceptions.find((e) => e.id === input.ref)
         if (!ex) throw new Error(`Unknown exception ${input.ref}`)
-        ex.hypothesis = String(input.hypothesis).slice(0, 400)
+        ex.hypothesis = clipSentences(input.hypothesis)
         return { ok: true, bridge: computeBridge(close.exceptions).unexplainedCents }
       }
       default: return callToolkit(name, input)

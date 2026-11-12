@@ -69,12 +69,18 @@ export function createLivePaypal({ sdk = createSdkPaypal({ client: getSdkClient 
     // Orders, Payments and Transaction Search go through the APIMatic SDK (sdk.js).
     ...sdk,
     // Not in the SDK (it has no Invoicing resource): these stay on REST.
-    createInvoice: ({ invoiceNumber, amountCents, description, recipientEmail, requestId }) =>
-      rest('POST', '/v2/invoicing/invoices', {
+    // With Prefer: return=representation the sandbox answers the whole invoice, not a link. Callers read the
+    // self link, so it is rebuilt from the id (seen 2026-11-12).
+    createInvoice: async ({ invoiceNumber, amountCents, description, recipientEmail, requestId }) => {
+      const res = await rest('POST', '/v2/invoicing/invoices', {
         detail: { invoice_number: invoiceNumber, currency_code: 'USD', note: description },
         primary_recipients: [{ billing_info: { email_address: recipientEmail } }],
         items: [{ name: description || 'Order', quantity: '1', unit_amount: toAmount(amountCents) }],
-      }, requestId),
+      }, requestId)
+      if (res.href) return res
+      if (!res.id) throw new PayPalError(502, 'UNREADABLE', 'Invoice create answered without an id.')
+      return { rel: 'self', href: `${API_BASE}/v2/invoicing/invoices/${res.id}`, method: 'GET' }
+    },
     sendInvoice: (id, { requestId } = {}) => rest('POST', `/v2/invoicing/invoices/${id}/send`, { send_to_recipient: true }, requestId),
     getInvoice: (id) => rest('GET', `/v2/invoicing/invoices/${id}`),
     searchInvoices: ({ invoiceNumber }) => rest('POST', '/v2/invoicing/search-invoices?page=1&page_size=20&total_required=true', { invoice_number: invoiceNumber }),

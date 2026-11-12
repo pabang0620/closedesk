@@ -100,7 +100,7 @@ export function detectExceptions(ctx) {
             ...base, key: `hold:${order.orderNo}`, code: 'CANCELLED_HOLD_OPEN', direction: 'none', heldCents: openAuth ? heldCents : 0,
             authId: openAuth?.id || authsOf(po)[0]?.id, proposedAction: openAuth && !isExpired(openAuth, nowMs) ? 'VOID_AUTH' : 'JOURNAL_ONLY',
             evidence: [{ kind: 'authorization', id: openAuth?.id || authsOf(po)[0]?.id, amountCents: heldCents }],
-            narrative: openAuth ? `Customer cancelled, PayPal still holds ${formatUsd(heldCents)}.` : 'The hold expired on its own.',
+            narrative: openAuth ? `Customer cancelled, PayPal still holds ${formatUsd(heldCents)}.` : authsOf(po).some((a) => a.status === 'VOIDED') ? 'The hold was already voided in PayPal: nothing is held.' : 'The hold expired on its own.',
           }))
         }
       } else if (order.status === 'shipped') {

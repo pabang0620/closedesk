@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useClose, closeActions } from '../lib/closeStore.js'
 import { usd } from '../lib/api.js'
-import { ACTION_LABEL, evidenceLabel, idLabel } from '../lib/labels.js'
+import { ACTION_LABEL, evidenceLabel, idLabel, splitExplanation } from '../lib/labels.js'
 
 const STATUS_LABEL = { open: 'Open', resolved: 'Resolved', carried: 'Carried forward', journal: 'Journal only' }
+// The PayPal money state behind each open exception, as a coloured chip.
+const MONEY_STATE = { PROMISED_REFUND_MISSING: ['captured', 'Captured, no refund'], DUPLICATE_PAYMENT: ['captured', 'Captured twice'], UNKNOWN_PAYMENT: ['captured', 'Captured, no order'], COUPON_OVERCHARGE: ['captured', 'Over-captured'], AMOUNT_MISMATCH: ['captured', 'Amount differs'], AUTH_NOT_CAPTURED: ['held', 'Hold open'], CANCELLED_HOLD_OPEN: ['held', 'Hold open'], SHIPPED_NOT_BILLED: ['pending', 'Not billed'], INVOICE_PAID_OFFLINE: ['pending', 'Invoice open'] }
 const MARK = { PROMISED_REFUND_MISSING: '!', DUPLICATE_PAYMENT: '!', UNKNOWN_PAYMENT: '!', COUPON_OVERCHARGE: '~', AMOUNT_MISMATCH: '~', AUTH_NOT_CAPTURED: '~', CANCELLED_HOLD_OPEN: '.', SHIPPED_NOT_BILLED: '.', INVOICE_PAID_OFFLINE: '.' }
 
 function Evidence({ items }) {
@@ -20,16 +22,29 @@ function Evidence({ items }) {
   )
 }
 
-function Explanation({ data }) {
+// The card keeps the code's one-line narrative. The model's longer classification and its answer fold under "Show more".
+function Explanation({ data, hypothesis }) {
+  const [open, setOpen] = useState(false)
   if (!data) return null
+  const { summary, rest } = splitExplanation(data.reply)
+  const folded = rest.length + data.events.length + (hypothesis ? 1 : 0)
   return (
     <div className="cd-explain" data-testid="explanation">
-      <p>{data.reply}</p>
-      <ul className="cd-evidence">
-        {data.events.map((ev, i) => (
-          <li key={i}><code>{ev.tool}</code> <span className="cd-chip">{ev.source || 'agent-toolkit'}</span> <span className="cd-muted">{ev.output || (ev.ok ? 'ok' : 'failed')}</span></li>
-        ))}
-      </ul>
+      <div className="cd-chip" data-testid="explanation-label">{data.label}</div>
+      {(open ? [...summary, ...rest] : summary).map((line, i) => <p key={i}>{line}</p>)}
+      {open && hypothesis ? <p data-testid="explanation-hypothesis"><span className="cd-tag">Recorded classification</span> {hypothesis}</p> : null}
+      {open ? (
+        <ul className="cd-evidence">
+          {data.events.map((ev, i) => (
+            <li key={i}><code>{ev.tool}</code> <span className="cd-chip">{ev.source || 'agent-toolkit'}</span> <span className="cd-muted">{ev.output || (ev.ok ? 'ok' : 'failed')}</span></li>
+          ))}
+        </ul>
+      ) : null}
+      {folded ? (
+        <button className="cd-btn" style={{ justifySelf: 'start' }} onClick={() => setOpen(!open)} data-testid="explanation-more">
+          {open ? 'Show less' : `Show more (${rest.length} more ${rest.length === 1 ? 'line' : 'lines'}, ${data.events.length} tool ${data.events.length === 1 ? 'call' : 'calls'})`}
+        </button>
+      ) : null}
     </div>
   )
 }
@@ -40,13 +55,17 @@ function ApprovalCard({ card, exception, ownerUrl }) {
   return (
     <div className="cd-approval" data-testid={`approval-${exception.id}`}>
       <div className="cd-approval-head">
-        <strong>{ACTION_LABEL[card.action]}</strong> <span className="cd-money">{usd(card.amountCents)}</span>
-        <span className="cd-chip">{owner ? 'needs owner' : 'bookkeeper'}</span>
+        <strong>{ACTION_LABEL[card.action]}</strong> <span className="cd-money">{usd(card.action === 'VOID_AUTH' && exception.heldCents ? exception.heldCents : card.amountCents)}</span>
+        <span className={`cd-st ${card.status === 'done' ? 'cd-st-refunded' : 'cd-st-pending'}`}>{card.status === 'done' ? (owner ? 'approved by owner' : 'approved by bookkeeper') : owner ? 'needs owner' : 'bookkeeper'}</span>
       </div>
-      <div className="cd-muted">Amount source: {card.amountSource}</div>
-      <div className="cd-after">After: {card.preview.text}</div>
+      <dl className="cd-facts">
+        <dt>Amount source</dt><dd>{card.amountSource}</dd>
+        <dt>After</dt><dd className="cd-after">{card.preview.text}</dd>
+        <dt>Approver</dt><dd>{owner ? 'Owner, from a signed one-time link' : 'Bookkeeper, on this desk'}</dd>
+      </dl>
       {card.capturePlan ? <div className="cd-note">{card.capturePlan.reason}</div> : null}
       {card.status === 'failed' && card.result?.note ? <div className="cd-error">{card.result.note} The sale moved to an invoice.</div> : null}
+      {card.status === 'awaiting_owner' ? <div className="cd-note" data-testid={`waiting-${exception.id}`}>Waiting for the owner to approve in the owner tab{ownerUrl?.actionId === card.id ? `. The link works once, until ${new Date(ownerUrl.expiresAtMs).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : ''}. This desk refreshes every 3 seconds.</div> : null}
       {card.status === 'done' ? <div className="cd-ok">Done. {Object.entries(card.result.ids || {}).map(([k, v]) => <span key={k}> {idLabel(k)}: <code>{v}</code></span>)}</div> : null}
       {['proposed', 'awaiting_owner'].includes(card.status) ? (
         <div className="cd-actions">
@@ -108,6 +127,7 @@ export default function ExceptionQueue({ widgetApi, dataMapping }) {
             <header onClick={() => closeActions.select(e.id)}>
               <span className={`cd-mark cd-mark-${MARK[e.code] === '!' ? 'high' : MARK[e.code] === '~' ? 'mid' : 'low'}`}>{MARK[e.code]}</span>
               <span className="cd-ex-title"><b>{e.id}</b> {e.title}</span>
+              {e.status === 'open' && MONEY_STATE[e.code] ? <span className={`cd-st cd-st-${MONEY_STATE[e.code][0]}`}>{MONEY_STATE[e.code][1]}</span> : <span />}
               <span className="cd-money">{e.code === 'CANCELLED_HOLD_OPEN' ? `${usd(e.heldCents)} held` : e.amountCents ? usd(e.amountCents) : ''}</span>
               <span className={`cd-badge cd-badge-${e.status}`}>{STATUS_LABEL[e.status]}</span>
             </header>
@@ -122,7 +142,7 @@ export default function ExceptionQueue({ widgetApi, dataMapping }) {
                   </button>
                 ) : null}
                 <button className="cd-btn" onClick={() => closeActions.askWhy(e.id)} disabled={busy} data-testid={`ask-${e.id}`}>Ask the Close Agent why</button>
-                <Explanation data={explanations[e.id]} />
+                <Explanation data={explanations[e.id]} hypothesis={e.hypothesis} />
                 {active ? <ApprovalCard card={card} exception={e} ownerUrl={ownerUrl} /> : null}
               </div>
             ) : null}

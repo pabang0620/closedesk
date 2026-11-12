@@ -1,0 +1,82 @@
+{
+  "scene": "studio",
+  "model": "claude-sonnet-5-5",
+  "backend": "account",
+  "recordedAt": "2026-11-12T05:37:09.050Z",
+  "prompt": "show every refund promise older than 1 day",
+  "turns": [
+    {
+      "turnIndex": 0,
+      "tools": "add_money_chart,delegate_to,get_close_status,rename_thread,show_promise_list,view_report,view_schema",
+      "ms": 4726,
+      "response": {
+        "id": "acct-14",
+        "createdAt": 1794461826089,
+        "status": "completed",
+        "usage": {
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "totalTokens": 0
+        },
+        "model": "claude-sonnet-5-5"
+      },
+      "output": [
+        {
+          "id": "acct-14-0",
+          "kind": "output",
+          "type": "message",
+          "role": "assistant",
+          "status": "completed",
+          "content": [
+            {
+              "type": "text",
+              "text": "I've asked for the list of refund promises older than 1 day. It will appear as a grid on the current page once the call comes back.",
+              "annotations": []
+            }
+          ]
+        },
+        {
+          "id": "acct-14-1",
+          "kind": "output",
+          "type": "function_call",
+          "callId": "toolu_acct_14",
+          "name": "show_promise_list",
+          "arguments": "{\"olderThanDays\":1}",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "turnIndex": 1,
+      "tools": "add_money_chart,delegate_to,get_close_status,rename_thread,show_promise_list,view_report,view_schema",
+      "ms": 2874,
+      "response": {
+        "id": "acct-14",
+        "createdAt": 1794461829050,
+        "status": "completed",
+        "usage": {
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "totalTokens": 0
+        },
+        "model": "claude-sonnet-5-5"
+      },
+      "output": [
+        {
+          "id": "acct-14-0",
+          "kind": "output",
+          "type": "message",
+          "role": "assistant",
+          "status": "completed",
+          "content": [
+            {
+              "type": "text",
+              "text": "The grid of refund promises older than 1 day is now on the current page.",
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

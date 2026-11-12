@@ -1,5 +1,6 @@
 import { config } from '../config.js'
 import { getAnthropic } from './anthropicClient.js'
+import { replayStudioTurn, recordStudioTurn } from './recordedRuns.js'
 
 // Translation between AG Studio's provider-neutral turn format (AgLlmRequest / AgLlmResponse) and
 // the Anthropic Messages API. The browser adapter posts the request here, so the API key stays
@@ -106,23 +107,30 @@ export function mockStudioTurn(request) {
   if (last?.type === 'function_call_output') {
     let text = String(last.output)
     try { const parsed = JSON.parse(text); text = parsed.response ?? parsed.message ?? text } catch { /* plain text result */ }
-    return respond([message(`m-${items.length}`, `Done. ${String(text).slice(0, 400)}`)])
+    return respond([message(`m-${items.length}`, `Done. ${String(text).slice(0, 400)}\n\n(Stand-in, no model)`)])
   }
   const wantsPromises = /promise|refund/.test(prompt)
   if (wantsPromises && hasTool(request, 'show_promise_list')) {
     const days = /(\d+)\s*day/.exec(prompt)
     return respond([call(`c-${items.length}`, 'show_promise_list', { olderThanDays: days ? Number(days[1]) : 1 })])
   }
-  // Stand-in for "chart the money at stake": the same tool call the real model makes. With a model, widget work goes to Studio's own widget agent.
+  // Stand-in for "chart the money at stake": the same tool call the recorded Sonnet run made (VERIFY 11).
   if (/chart|graph/.test(prompt) && hasTool(request, 'add_money_chart')) return respond([call(`c-${items.length}`, 'add_money_chart', {})])
   if (hasTool(request, 'get_close_status')) return respond([call(`c-${items.length}`, 'get_close_status', {})])
   return respond([message(`m-${items.length}`, 'I am the Close Agent running without a model key. Ask about refund promises or the close status.')])
 }
 
 // POST /api/studio/turn
-export async function handleStudioTurn(request, { client = getAnthropic() } = {}) {
-  if (!client) return { response: mockStudioTurn(request), mode: 'mock' }
+// No model: a recorded real run of this prompt when one exists, else the stand-in. RECORD_RUNS=1 saves live turns.
+export async function handleStudioTurn(request, { client = getAnthropic(), record = config.recordRuns } = {}) {
+  if (!client) {
+    const replay = replayStudioTurn(request)
+    if (replay) return { response: replay.response, mode: 'recorded', label: replay.label }
+    return { response: mockStudioTurn(request), mode: 'mock', label: 'Stand-in (no model)' }
+  }
   const body = toAnthropicRequest(request)
-  const response = await client.messages.create(body)
-  return { response: fromAnthropicResponse(response, request), mode: 'live' }
+  const started = Date.now()
+  const response = fromAnthropicResponse(await client.messages.create(body), request)
+  if (record) recordStudioTurn(request, response, Date.now() - started)
+  return { response, mode: 'live' }
 }

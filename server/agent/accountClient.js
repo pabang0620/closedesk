@@ -46,7 +46,7 @@ export function createAccountClient({ sdk, model = config.anthropicModel, env = 
       return { content: [{ type: 'text', text: 'Recorded. The caller runs this tool and reports back in the next turn.' }] }
     }))
     const forced = body.tool_choice?.type === 'any' ? '\nYou must call a tool in this turn.' : ''
-    const system = `${typeof body.system === 'string' ? body.system : ''}${forced}\nCall only the tools you need in this turn. After you call tools, stop: the results come back in the next turn.`
+    const system = `${typeof body.system === 'string' ? body.system : ''}${forced}\nAlways answer in English. Call only the tools you need in this turn. After you call tools, stop: the results come back in the next turn.`
     const stream = agentSdk.query({
       prompt: `${transcriptOf(body.messages)}\n\nContinue as the Assistant.`,
       options: {
@@ -58,15 +58,24 @@ export function createAccountClient({ sdk, model = config.anthropicModel, env = 
         maxTurns: 1 + (tools.length ? 1 : 0),
         effort: 'medium',
         settingSources: [],
+        // Only this app's tools: no MCP servers from the developer's machine and no claude.ai connectors
+        // (a recorded run once mentioned the developer's Docs connector, 2026-11-12).
+        strictMcpConfig: true,
+        settings: { disableClaudeAiConnectors: true },
         env: withoutApiKey(env()),
       },
     })
     const texts = []
-    for await (const message of stream) {
-      if (message.type === 'assistant') {
-        for (const block of message.message?.content || []) if (block.type === 'text' && block.text?.trim()) texts.push(block.text.trim())
+    try {
+      for await (const message of stream) {
+        if (message.type === 'assistant') {
+          for (const block of message.message?.content || []) if (block.type === 'text' && block.text?.trim()) texts.push(block.text.trim())
+        }
+        if (message.type === 'result' && message.subtype !== 'success' && message.subtype !== 'error_max_turns') throw new Error(`Account model failed: ${message.subtype}`)
       }
-      if (message.type === 'result' && message.subtype !== 'success' && message.subtype !== 'error_max_turns') throw new Error(`Account model failed: ${message.subtype}`)
+    } catch (err) {
+      // The SDK may throw when the turn cap is hit. That is the normal end of a turn that called tools.
+      if (!(calls.length && /maximum number of turns/i.test(err.message))) throw err
     }
     const content = [...(texts.length ? [{ type: 'text', text: texts.join('\n') }] : []), ...calls.map((c) => ({ ...c, name: c.name.replace(PREFIX, '') }))]
     if (!content.length) content.push({ type: 'text', text: 'Done.' })

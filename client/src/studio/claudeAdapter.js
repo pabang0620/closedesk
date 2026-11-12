@@ -1,6 +1,6 @@
 import { api } from '../lib/api.js'
 
-// AG Studio ships an OpenAI adapter only. This is the Claude one: it posts the provider-neutral
+// The ag-studio package has no Claude adapter. This is the Claude one: it posts the provider-neutral
 // turn to our server, which holds the key and talks to Anthropic (or the stand-in without a key),
 // then replays the answer as AG Studio protocol events.
 function* eventsFor(output) {

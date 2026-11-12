@@ -4,9 +4,11 @@ import { LAYOUTS } from '../studio/layouts.js'
 // AG Studio and AG Charts are most of the bundle. They load as their own chunk so the shell paints first.
 const StudioView = lazy(() => import('../studio/StudioView.jsx'))
 import { TracePanel, CompletenessPanel, PackagePanel } from './Panels.jsx'
+import { SandboxEvidencePanel } from './SandboxEvidence.jsx'
+import CloseSteps from './CloseSteps.jsx'
 
 const LLM_LABEL = { mock: ' · stand-in model', live: ' · Claude', account: ' · Claude Sonnet (local account)' }
-const TABS = [['trace', 'Agent trace'], ['complete', 'Data completeness'], ['package', 'Close package']]
+const TABS = [['trace', 'Agent trace'], ['complete', 'Data completeness'], ['package', 'Close package'], ['evidence', 'Sandbox evidence']]
 
 function readTheme() {
   try { return localStorage.getItem('closedesk-theme') } catch { return null }
@@ -37,16 +39,19 @@ export default function DeskPage() {
   return (
     <div className="cd-shell">
       <header className="cd-top">
-        <div className="cd-brand"><span className="cd-logo" aria-hidden="true" />CloseDesk <small>{view ? `${view.merchant} · ${view.period.rangeLabel} · Daily check ${view.checkedAt ? new Date(view.checkedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}` : 'Loading'}</small></div>
-        <nav className="cd-controls" aria-label="Layouts">
-          {LAYOUTS.map((l) => <button key={l.id} className={`cd-btn ${layout === l.id ? 'is-on' : ''}`} onClick={() => setLayout(l.id)}>{l.label}</button>)}
-          <button className={`cd-btn ${mode === 'edit' ? 'is-on' : ''}`} onClick={() => setMode(mode === 'edit' ? 'view' : 'edit')} data-testid="edit-toggle">{mode === 'edit' ? 'Done editing' : 'Edit layout and Close Agent'}</button>
-          <button className="cd-btn" onClick={() => setDark(!dark)} aria-label="Toggle dark mode">{dark ? 'Light' : 'Dark'}</button>
-          <button className="cd-btn" onClick={() => closeActions.recheck()} disabled={busy}>Run daily check</button>
-          <button className="cd-btn cd-btn-primary" onClick={() => closeActions.start()} disabled={busy || (view && !view.signed)} title={view && !view.signed ? 'Sign the current close first' : ''}>Start a fresh close</button>
+        <div className="cd-brand"><img className="brand-logo brand-logo--chip" src="/logo-512.png" width="28" height="28" alt="CloseDesk" />CloseDesk <small>{view ? `${view.merchant} · ${view.period.rangeLabel} · Daily check ${view.checkedAt ? new Date(view.checkedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}` : 'Loading'}</small></div>
+        <nav className="cd-views" aria-label="Layouts">
+          {LAYOUTS.map((l) => <button key={l.id} className={`cd-seg ${layout === l.id ? 'is-on' : ''}`} aria-pressed={layout === l.id} onClick={() => setLayout(l.id)}>{l.label}</button>)}
         </nav>
+        <div className="cd-controls">
+          <button className={`cd-btn ${mode === 'edit' ? 'is-on' : 'cd-btn-ghost'}`} onClick={() => setMode(mode === 'edit' ? 'view' : 'edit')} data-testid="edit-toggle">{mode === 'edit' ? 'Done editing' : 'Edit layout and Close Agent'}</button>
+          <button className="cd-btn cd-btn-ghost" onClick={() => closeActions.recheck()} disabled={busy}>Run daily check</button>
+          {view?.signed ? <button className="cd-btn cd-btn-primary" onClick={() => closeActions.start()} disabled={busy}>Start a fresh close</button> : null}
+          <button className="cd-btn cd-btn-icon" onClick={() => setDark(!dark)} aria-label={dark ? 'Light mode' : 'Dark mode'} title={dark ? 'Light mode' : 'Dark mode'}>{dark ? '\u2600' : '\u263E'}</button>
+        </div>
       </header>
-      {view ? <div className="cd-badge-line" data-testid="source-badge">{view.ledger.badge}{view.modes.paypal === 'mock' ? ' · mock PayPal' : ' · PayPal sandbox'}{LLM_LABEL[view.modes.llm]}</div> : null}
+      {view ? <div className="cd-badge-line"><span className="cd-dot" aria-hidden="true" /><span data-testid="source-badge">{view.ledger.badge}{view.modes.paypal === 'mock' ? ' · mock PayPal' : ' · PayPal sandbox'}{view.modes.llm === 'mock' && view.recordedLabel ? ` · AI: ${view.recordedLabel} (replayed where recorded, stand-in elsewhere)` : LLM_LABEL[view.modes.llm]}</span></div> : null}
+      {view ? <CloseSteps view={view} /> : null}
       {error ? <div className="cd-banner cd-error" role="alert">{error}</div> : null}
       {notice ? <div className="cd-banner">{notice}</div> : null}
       <main className="cd-studio"><Suspense fallback={<div className="cd-empty">Loading AG Studio</div>}><StudioView layout={layout} mode={mode} /></Suspense></main>
@@ -56,6 +61,7 @@ export default function DeskPage() {
           {tab === 'trace' ? <TracePanel /> : null}
           {tab === 'complete' ? <CompletenessPanel /> : null}
           {tab === 'package' ? <PackagePanel /> : null}
+          {tab === 'evidence' ? <SandboxEvidencePanel /> : null}
         </div>
       </section>
     </div>

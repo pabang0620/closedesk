@@ -34,8 +34,8 @@ export const closeMeterWidget = {
   label: 'Close Meter',
   form: (params) => params.createDefaults({ dataMappingItems: [] }),
   comp: CloseMeter,
-  defaultSize: { width: 24, height: 5 },
-  minSize: { width: 12, height: 4 },
+  defaultSize: { width: 5, height: 30 },
+  minSize: { width: 4, height: 16 },
   ai: { label: 'Close Meter', description: 'Orders matched, open exceptions, unexplained amount and the Sign close button.', usage: 'Use as the headline of a close.', configuration: AI_NOTE },
 }
 

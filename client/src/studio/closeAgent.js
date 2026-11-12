@@ -3,7 +3,7 @@ import { claudeProxyAdapter } from './claudeAdapter.js'
 import { getState } from '../lib/closeStore.js'
 import { usd } from '../lib/api.js'
 
-const CLOSE_PROMPT = `You are the Close Agent inside CloseDesk, a month-end close desk for a small online seller (Brightloom Candles, PayPal sandbox).
+const CLOSE_PROMPT = `You are the Close Agent inside CloseDesk, a month-end close desk for a small online seller (Brightloom Candles).
 
 Domain knowledge:
 - Every gap between PayPal and what the seller promised customers is an exception. Over means PayPal holds more than the books say, under means less.
@@ -15,7 +15,12 @@ How you work:
 - For status questions call get_close_status.
 - To show promises the shop made, call show_promise_list with the age in days. It adds a grid widget to the current page.
 - To chart the money at stake, call add_money_chart. It adds a bar chart of exception amounts by type.
-- For anything about the data or for building other widgets, delegate to the built-in data and widget agents with delegate_to, then summarise what they did in one or two sentences.
+- Your own widget tools build exactly two widgets: the promise grid and the money-at-stake bar chart. You cannot build any other widget yourself.
+- Any other widget (a pie, line or KPI chart, a grid of another table, a different field or grouping) or any question about the tables and fields: call delegate_to. Do not ask the user first.
+  - A new widget takes two delegations, in order. First type "page": "Add one new <widget type> widget below the existing widgets on page <page id>." Its summary gives the new widget id. Then type "widget" with that new widget id: one concrete task naming the table and fields (for example "Show the sum of ledger.amount by ledger.eventCode, title PayPal ledger by event code").
+  - Never delegate a change to an existing widget (queue, bridge, meter, ledger, promises, approvals, byStatus, board) unless the user asked to change that widget. They are the desk.
+  - A data question: type "data".
+- After the delegates return, summarise what they did in one or two sentences.
 Style: short and concrete.`
 
 
@@ -116,7 +121,7 @@ export function createCloseHarness(api) {
         description: 'Knows the close: exceptions, the bridge and who may approve what.',
         adapter,
         instructions: () => CLOSE_PROMPT,
-        tools: ({ studio, tools: harnessTools }) => [statusTool, promiseTool, chartTool, studio.viewSchema(), studio.viewReport(), harnessTools.delegateTo(['data', 'widget']), harnessTools.renameThread()],
+        tools: ({ studio, tools: harnessTools }) => [statusTool, promiseTool, chartTool, studio.viewSchema(), studio.viewReport(), harnessTools.delegateTo(['data', 'page', 'widget']), harnessTools.renameThread()],
         maxTurns: 12,
       }),
       ...['lead', 'data', 'page', 'planning', 'widget'].map((id) => directLlmRunner({ ...builtIn[id], adapter })),
@@ -126,6 +131,7 @@ export function createCloseHarness(api) {
       { label: 'Refund promises older than 1 day', prompt: 'Show every refund promise older than 1 day' },
       { label: 'Where do we stand?', prompt: 'Where does the close stand right now?' },
       { label: 'Chart money at stake', prompt: 'Chart the money at stake by exception type' },
+      { label: 'Pie of money by direction', prompt: 'Add a pie chart of the exception amounts by direction' },
     ],
   }))
 }

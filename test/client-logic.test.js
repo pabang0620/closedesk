@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { withOrderFilter } from '../client/src/studio/crossFilter.js'
 import { PAGES } from '../client/src/studio/layouts.js'
 import { mockStudioTurn } from '../server/agent/studioTurn.js'
-import { idLabel, evidenceLabel, ACTION_LABEL } from '../client/src/lib/labels.js'
+import { idLabel, evidenceLabel, ACTION_LABEL, splitExplanation } from '../client/src/lib/labels.js'
 
 const state = () => ({ pages: structuredClone(PAGES), selectedPageId: 'bookkeeper' })
 const filtersOf = (s, page, widget) => s.pages.find((p) => p.id === page).filter?.widget?.[widget] || []
@@ -43,4 +43,25 @@ test('labels: no enum or camelCase reaches the screen', () => {
   assert.equal(evidenceLabel('some_new_kind'), 'some new kind')
   assert.equal(idLabel('refundId'), 'Refund')
   assert.equal(idLabel('fooBarId'), 'foo bar id')
+})
+
+test('Ask why answer folds to a three-line summary and keeps every other line behind "Show more"', () => {
+  const reply = '**E2 is a duplicate.**\n\n**Why**\n- two payments\n- one order\n- same cart'
+  const { summary, rest } = splitExplanation(reply)
+  assert.deepEqual(summary, ['E2 is a duplicate.', 'Why', '- two payments'])
+  assert.deepEqual(rest, ['- one order', '- same cart'])
+  assert.deepEqual(splitExplanation('One line.'), { summary: ['One line.'], rest: [] })
+  assert.deepEqual(splitExplanation(undefined), { summary: [], rest: [] })
+})
+
+test('the card keeps the code narrative after Ask why; the model classification is a separate field', async () => {
+  const { makeWorld, makeClose, byCode } = await import('./helpers.js')
+  const { closeView } = await import('../server/close/view.js')
+  const world = makeWorld()
+  const { close } = await makeClose(world)
+  const dup = byCode(close, 'DUPLICATE_PAYMENT')
+  dup.hypothesis = 'A long model classification. '.repeat(10)
+  const shown = closeView(close, { mode: { paypal: 'mock', llm: 'mock' } }).exceptions.find((e) => e.id === dup.id)
+  assert.equal(shown.narrative, dup.narrative)
+  assert.equal(shown.hypothesis, dup.hypothesis)
 })

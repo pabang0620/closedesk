@@ -1,0 +1,82 @@
+{
+  "scene": "studio",
+  "model": "claude-sonnet-5-5",
+  "backend": "account",
+  "recordedAt": "2026-11-12T06:28:57.123Z",
+  "prompt": "where does the close stand right now",
+  "turns": [
+    {
+      "turnIndex": 0,
+      "tools": "add_money_chart,delegate_to,get_close_status,rename_thread,show_promise_list,view_report,view_schema",
+      "ms": 5278,
+      "response": {
+        "id": "acct-27",
+        "createdAt": 1794464933228,
+        "status": "completed",
+        "usage": {
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "totalTokens": 0
+        },
+        "model": "claude-sonnet-5-5"
+      },
+      "output": [
+        {
+          "id": "acct-27-0",
+          "kind": "output",
+          "type": "message",
+          "role": "assistant",
+          "status": "completed",
+          "content": [
+            {
+              "type": "text",
+              "text": "I called the close status tool, but it returned only an acknowledgement and no figures. I don't have the matched orders, unexplained amount, open exceptions or PayPal source yet, so I won't guess at them. I'll report them once the data comes back.",
+              "annotations": []
+            }
+          ]
+        },
+        {
+          "id": "acct-27-1",
+          "kind": "output",
+          "type": "function_call",
+          "callId": "toolu_acct_27",
+          "name": "get_close_status",
+          "arguments": "{}",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "turnIndex": 1,
+      "tools": "add_money_chart,delegate_to,get_close_status,rename_thread,show_promise_list,view_report,view_schema",
+      "ms": 3888,
+      "response": {
+        "id": "acct-27",
+        "createdAt": 1794464937123,
+        "status": "completed",
+        "usage": {
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "totalTokens": 0
+        },
+        "model": "claude-sonnet-5-5"
+      },
+      "output": [
+        {
+          "id": "acct-27-0",
+          "kind": "output",
+          "type": "message",
+          "role": "assistant",
+          "status": "completed",
+          "content": [
+            {
+              "type": "text",
+              "text": "**Close status (Nov 1-12):**\n\n- **Matched:** 15 of 20 orders\n- **Unexplained:** $306.17 (over $128.17, under $178.00)\n- **Carried forward:** $0.00\n- **Source:** PayPal Transaction Search, 18 transactions\n\n**Open exceptions:**\n- E1: Promised refund never sent, $89.00\n- E2: Paid twice (found by search), $34.50\n- E3: Coupon not applied, $4.67\n- E4: Shipped, hold not captured, $120.00\n- E5: Cancelled, hold still open\n- E6: Shipped, never billed, $58.00\n- E7: Paid by bank, invoice open\n\nE5 and E7 show no amount. E5 is a void, which releases the hold and doesn't change the bridge. Only the shop owner can move money, such as the E1 refund and the E4 capture.",
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

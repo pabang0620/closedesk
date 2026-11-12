@@ -24,9 +24,11 @@ export async function listAllTransactions(paypal, { startMs, endMs, statuses = S
           pageSize,
           page,
         })
-        trace?.({ call: 'GET /v1/reporting/transactions', status, page, count: res.transaction_details.length, totalItems: res.total_items })
-        details.push(...res.transaction_details)
-        totalPages = res.total_pages
+        // An empty page comes back without transaction_details (seen in the sandbox 2026-11-12).
+        const rows = res.transaction_details || []
+        trace?.({ call: 'GET /v1/reporting/transactions', status, page, count: rows.length, totalItems: res.total_items ?? 0 })
+        details.push(...rows)
+        totalPages = res.total_pages ?? 0
         page += 1
       } while (page <= totalPages)
     }

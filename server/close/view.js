@@ -8,7 +8,7 @@ export const merchantLabel = (mode) => `Brightloom Candles (${mode.paypal === 'm
 
 const publicException = (e) => ({
   id: e.id, code: e.code, title: e.title, orderNo: e.orderNo, direction: e.direction, amountCents: e.amountCents, heldCents: e.heldCents,
-  status: e.status, proposedAction: e.proposedAction, approver: e.approver, evidence: e.evidence, narrative: e.hypothesis || e.narrative,
+  status: e.status, proposedAction: e.proposedAction, approver: e.approver, evidence: e.evidence, narrative: e.narrative, hypothesis: e.hypothesis && e.hypothesis !== e.narrative ? e.hypothesis : null,
   flags: e.flags, disputed: !!e.disputed, resolution: e.resolution || null, captureId: e.captureId, authId: e.authId, invoiceNumber: e.invoiceNumber,
 })
 
@@ -18,7 +18,7 @@ const publicCard = (a) => ({
 })
 
 // What the browser gets. No tokens, no secrets.
-export function closeView(close, { mode }) {
+export function closeView(close, { mode, recordedLabel = null }) {
   const bridge = computeBridge(close.exceptions)
   return {
     closeId: close.id,
@@ -26,6 +26,8 @@ export function closeView(close, { mode }) {
     merchant: merchantLabel(mode),
     checkedAt: close.checkedAtMs ? new Date(close.checkedAtMs).toISOString() : null,
     modes: mode,
+    // Set when no model is configured and a recorded real model run is replayed instead of the stand-in.
+    recordedLabel,
     ledger: { mode: close.ledger.mode, badge: close.ledger.badge, skippedChecks: close.ledger.skippedChecks, lineCount: close.ledger.lines.length },
     bridge,
     matched: matchedOrders(close.books, close.exceptions),

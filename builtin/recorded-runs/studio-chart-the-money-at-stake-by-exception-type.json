@@ -1,0 +1,82 @@
+{
+  "scene": "studio",
+  "model": "claude-sonnet-5-5",
+  "backend": "account",
+  "recordedAt": "2026-11-12T05:43:05.387Z",
+  "prompt": "chart the money at stake by exception type",
+  "turns": [
+    {
+      "turnIndex": 0,
+      "tools": "add_money_chart,delegate_to,get_close_status,rename_thread,show_promise_list,view_report,view_schema",
+      "ms": 3994,
+      "response": {
+        "id": "acct-28",
+        "createdAt": 1794462181939,
+        "status": "completed",
+        "usage": {
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "totalTokens": 0
+        },
+        "model": "claude-sonnet-5-5"
+      },
+      "output": [
+        {
+          "id": "acct-28-0",
+          "kind": "output",
+          "type": "message",
+          "role": "assistant",
+          "status": "completed",
+          "content": [
+            {
+              "type": "text",
+              "text": "The chart tool has been called. Its result comes back in the next turn, and I'll report what it added then.",
+              "annotations": []
+            }
+          ]
+        },
+        {
+          "id": "acct-28-1",
+          "kind": "output",
+          "type": "function_call",
+          "callId": "toolu_acct_28",
+          "name": "add_money_chart",
+          "arguments": "{}",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "turnIndex": 1,
+      "tools": "add_money_chart,delegate_to,get_close_status,rename_thread,show_promise_list,view_report,view_schema",
+      "ms": 3278,
+      "response": {
+        "id": "acct-28",
+        "createdAt": 1794462185386,
+        "status": "completed",
+        "usage": {
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "totalTokens": 0
+        },
+        "model": "claude-sonnet-5-5"
+      },
+      "output": [
+        {
+          "id": "acct-28-0",
+          "kind": "output",
+          "type": "message",
+          "role": "assistant",
+          "status": "completed",
+          "content": [
+            {
+              "type": "text",
+              "text": "I added a bar chart of money at stake by exception type to the current page. It shows each exception type's amount as read from the app. I didn't pull the figures into this reply, so I can't quote any of them.\n\nFor the numbers, I can check the close status.",
+              "annotations": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

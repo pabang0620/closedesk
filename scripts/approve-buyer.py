@@ -31,6 +31,14 @@ def env_value(name):
     return ""
 
 
+def chromium_path():
+    """CHROMIUM_PATH first, else the newest chromium under ~/.cache/ms-playwright (the pip build may expect another)."""
+    if os.environ.get("CHROMIUM_PATH"):
+        return os.environ["CHROMIUM_PATH"]
+    found = sorted(Path.home().glob(".cache/ms-playwright/chromium-*/chrome-linux64/chrome"))
+    return str(found[-1]) if found else None
+
+
 def approve(page, url, order_no):
     page.goto(url, wait_until="domcontentloaded")
     try:
@@ -63,7 +71,7 @@ record = json.loads((ROOT / "data" / "periods" / f"{sys.argv[1]}.json").read_tex
 pending = record["manifest"]["pending"]
 approved = 0
 with sync_playwright() as pw:
-    browser = pw.chromium.launch(headless=True)
+    browser = pw.chromium.launch(headless=True, executable_path=chromium_path())
     for item in pending:
         context = browser.new_context()  # a fresh login per order keeps one stuck order from blocking the rest
         ok = item["approveUrl"] and approve(context.new_page(), item["approveUrl"], item["orderNo"])

@@ -25,7 +25,8 @@ Skills followed: `typescript-integrate-paypal`, `typescript-getting-started`, `t
 
 ## Real sandbox results (VERIFY.md, 2026-11-12)
 
-- Read smoke: `searchBalances` and `searchTransactions` answered 403 (debug ids `ca5918dd04c18`, `ca5918dd1c864`). The token request works, the reporting scopes are missing, so the app runs in mode B and says so.
+- Read smoke: at first `searchBalances` and `searchTransactions` answered 403 (debug ids `ca5918dd04c18`, `ca5918dd1c864`) and the app ran in mode B and said so. Later the same day the scope was granted: `searchBalances` 1 balance, `searchTransactions` 86 items, and once the index caught up a close ran in mode A through `transactionSearch.searchTransactions` (VERIFY 2, 7).
+- Writes in the seeded close: refunds `0TB68373FK703634V`, `2T248348FD9414800` and `6VY43897TU6121035` (the duplicate found by search), capture `5P5249954H751362W`, void of `1U584327LU028570K`, each read back through the SDK.
 - Finding: `authorizeOrder` and `captureOrder` sent without a body answered 415. `finishOrder` now sends body `{}`; both then answered 200.
 - Writes through the SDK: refund `75M999425T494132P`, final capture `7EF29184AT762933C`, a PayPal-account authorization `1DY809243X095705T` (reauthorize on day 0 answered `REAUTHORIZATION_TOO_SOON`).
 - Card order create answered 422 `PAYEE_NOT_ENABLED_FOR_CARD_PROCESSING`. The SDK order request now has a second branch, `payment_source.paypal` with `experience_context` (see `test/sdk-orders.test.js`).

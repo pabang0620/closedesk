@@ -1,5 +1,7 @@
 import { callToolkit } from '../paypal/toolkit.js'
 import { toCents, formatUsd } from '../util/money.js'
+import { remapIds, shiftDates } from './recordedRuns.js'
+import { TOOLKIT_TOOL_NAMES, clipSentences, HYPOTHESIS_MAX } from './tools.js'
 
 // "Ask the Close Agent why", without a model. A fixed read sequence on the PayPal Agent Toolkit tools
 // (get_order, get_invoice, list_transactions), then an answer written from those results. No money moves.
@@ -42,5 +44,25 @@ export async function explainException(close, exceptionId, { now = Date.now(), c
   }
   close.trace = [...close.trace, ...events.map((e) => ({ tool: e.tool, input: e.input, output: e.output, source: e.source, atMs: now }))]
   const reply = `${ex.hypothesis || ex.narrative} PayPal says: ${facts.length ? `${facts.join('; ')}.` : 'the read calls did not return anything usable, so this rests on the books and the support thread.'}`
-  return { reply, events }
+  return { reply, events, label: 'Fixed Agent Toolkit read sequence (no model)' }
+}
+
+// Replays a recorded real model run of "Ask the Close Agent why" (builtin/recorded-runs/ask-E*.json).
+// The model's tool calls run again, in the recorded order, against this session's PayPal data (ids remapped,
+// the search window shifted by the time since the recording), so every result on screen is live. Only the model text is recorded.
+export async function replayAsk(close, run, { now = Date.now(), runTool, currentIds, label }) {
+  const events = []
+  for (const turn of run.turns) {
+    for (const use of turn.toolCalls) {
+      let input = remapIds(use.input, run.idMap, currentIds)
+      if (use.name === 'list_transactions') input = shiftDates(input, run.recordedAt, now)
+      // The recorded hypothesis lands on the card, so it carries the label there too.
+      if (use.name === 'classify_exception' && input.hypothesis) input = { ...input, hypothesis: `${clipSentences(input.hypothesis, HYPOTHESIS_MAX - label.length - 3)} (${label})` }
+      let ok = true
+      try { await runTool(use.name, input) } catch { ok = false }
+      events.push({ tool: use.name, ok, input, output: ok ? 'ok' : 'failed', source: use.name in TOOLKIT_TOOL_NAMES ? 'agent-toolkit' : 'code', modelMs: turn.ms })
+    }
+  }
+  close.trace = [...close.trace, ...events.map((e) => ({ tool: e.tool, input: e.input, output: `${e.output} (${label})`, source: e.source, atMs: now }))]
+  return { reply: remapIds(run.reply, run.idMap, currentIds), events, label, modelSteps: run.turns.map((t) => ({ ms: t.ms, tools: t.toolCalls.map((c) => c.name) })) }
 }

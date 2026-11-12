@@ -1,0 +1,145 @@
+{
+  "scene": "studio",
+  "model": "claude-sonnet-5-5",
+  "backend": "account",
+  "recordedAt": "2026-11-12T06:27:55.064Z",
+  "prompt": "show the sum of exceptions.amount by exceptions.direction, title \"exception amounts by direction\"",
+  "turns": [
+    {
+      "turnIndex": 2,
+      "tools": "add_widget_filter,complete_task,configure_widget,remove_widget_filter,view_plan,view_schema,view_widget",
+      "ms": 4766,
+      "response": {
+        "id": "acct-22",
+        "createdAt": 1794464864697,
+        "status": "completed",
+        "usage": {
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "totalTokens": 0
+        },
+        "model": "claude-sonnet-5-5"
+      },
+      "output": [
+        {
+          "id": "acct-22-0",
+          "kind": "output",
+          "type": "function_call",
+          "callId": "toolu_acct_21",
+          "name": "view_schema",
+          "arguments": "{}",
+          "status": "completed"
+        },
+        {
+          "id": "acct-22-1",
+          "kind": "output",
+          "type": "function_call",
+          "callId": "toolu_acct_22",
+          "name": "configure_widget",
+          "arguments": "{\"op\":\"patch\",\"value\":{\"type\":\"pie-chart\",\"format\":{\"title\":{\"enabled\":true,\"text\":\"Exception amounts by direction\"}},\"dataMapping\":{\"categoryKey\":[{\"id\":\"exceptions.direction\"}],\"valueKey\":[{\"id\":\"exceptions.amount\",\"aggregation\":\"sum\"}]}},\"widgetId\":\"pie\"}",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "turnIndex": 4,
+      "tools": "add_widget_filter,complete_task,configure_widget,remove_widget_filter,view_plan,view_schema,view_widget",
+      "ms": 4636,
+      "response": {
+        "id": "acct-24",
+        "createdAt": 1794464869402,
+        "status": "completed",
+        "usage": {
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "totalTokens": 0
+        },
+        "model": "claude-sonnet-5-5"
+      },
+      "output": [
+        {
+          "id": "acct-24-0",
+          "kind": "output",
+          "type": "message",
+          "role": "assistant",
+          "status": "completed",
+          "content": [
+            {
+              "type": "text",
+              "text": "The health check still reports an unmapped field, so I'll check the widget's current state.",
+              "annotations": []
+            }
+          ]
+        },
+        {
+          "id": "acct-24-1",
+          "kind": "output",
+          "type": "function_call",
+          "callId": "toolu_acct_23",
+          "name": "view_widget",
+          "arguments": "{\"widgetId\":\"pie\"}",
+          "status": "completed"
+        },
+        {
+          "id": "acct-24-2",
+          "kind": "output",
+          "type": "function_call",
+          "callId": "toolu_acct_24",
+          "name": "view_widget",
+          "arguments": "{\"widgetId\":\"pie\"}",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "turnIndex": 6,
+      "tools": "add_widget_filter,complete_task,configure_widget,remove_widget_filter,view_plan,view_schema,view_widget",
+      "ms": 5638,
+      "response": {
+        "id": "acct-26",
+        "createdAt": 1794464875064,
+        "status": "completed",
+        "usage": {
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "totalTokens": 0
+        },
+        "model": "claude-sonnet-5-5"
+      },
+      "output": [
+        {
+          "id": "acct-26-0",
+          "kind": "output",
+          "type": "message",
+          "role": "assistant",
+          "status": "completed",
+          "content": [
+            {
+              "type": "text",
+              "text": "The widget is configured correctly. The only remaining issue is `category_density`, because the data has just 3 direction values. That's inherent to the data and can't be fixed by changing the configuration.",
+              "annotations": []
+            }
+          ]
+        },
+        {
+          "id": "acct-26-1",
+          "kind": "output",
+          "type": "function_call",
+          "callId": "toolu_acct_25",
+          "name": "complete_task",
+          "arguments": "{\"summary\":\"Configured the pie chart to show the sum of @field[exceptions.amount] by @field[exceptions.direction], titled \\\"Exception amounts by direction\\\". The only remaining health note is low category density, since there are just 3 direction values.\",\"artifacts\":[{\"id\":\"pie\",\"type\":\"pie-chart\",\"description\":\"Pie chart of summed exception amounts by direction\"}]}",
+          "status": "completed"
+        },
+        {
+          "id": "acct-26-2",
+          "kind": "output",
+          "type": "function_call",
+          "callId": "toolu_acct_26",
+          "name": "view_widget",
+          "arguments": "{\"widgetId\":\"pie\"}",
+          "status": "completed"
+        }
+      ]
+    }
+  ]
+}

@@ -179,10 +179,7 @@ async function runAction(close, ex, card, deps) {
     }
     case 'SEND_INVOICE': {
       const order = close.books.orders.find((o) => o.orderNo === ex.orderNo)
-      const number = invoiceNumberFor(close.periodId, close.invoiceSerial)
-      const created = await paypal.createInvoice({ invoiceNumber: number, amountCents: card.amountCents, description: `Order ${ex.orderNo}: ${order?.item || 'order'}`, recipientEmail: order?.email, requestId })
-      const invoiceId = created.href.split('/').pop()
-      await paypal.sendInvoice(invoiceId, { requestId: `${requestId}s` })
+      const { number, invoiceId } = await createOrAdoptInvoice(close, ex, card, order, paypal, requestId)
       close.invoiceSerial += 1
       Object.assign(ex, { status: 'carried', carriedCents: card.amountCents, resolution: { kind: 'invoice', invoiceNumber: number, invoiceId, amountCents: card.amountCents, reason: ex.carryReason || 'Invoice sent for a shipped order that was never charged' } })
       return { kind: 'invoice', ids: { invoiceId, invoiceNumber: number }, amountCents: card.amountCents }
@@ -198,6 +195,40 @@ async function runAction(close, ex, card, deps) {
     default:
       throw new HttpError(400, 'Unknown action.', 'ACTION_NOT_ALLOWED')
   }
+}
+
+// The invoice number may already exist in PayPal: an earlier answer was lost, or the same period was closed
+// before (seen in the sandbox 2026-11-12, DUPLICATE_INVOICE_NUMBER). Re-read it: the same amount means it is
+// this order's invoice only when the amount, the recipient and the order reference all match: it is then
+// adopted (and sent if still a draft) instead of sending a second one. Anything else takes the next number.
+function isSameInvoice(inv, { amountCents, email, orderNo }) {
+  const sameAmount = Boolean(inv.amount) && fromAmount(inv.amount) === amountCents
+  const sameRecipient = Boolean(email) && (inv.primary_recipients || []).some((r) => r.billing_info?.email_address === email)
+  const sameOrder = Boolean(orderNo) && String(inv.detail?.note || '').startsWith(`Order ${orderNo}:`)
+  return sameAmount && sameRecipient && sameOrder
+}
+
+async function createOrAdoptInvoice(close, ex, card, order, paypal, requestId) {
+  const description = `Order ${ex.orderNo}: ${order?.item || 'order'}`
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const number = invoiceNumberFor(close.periodId, close.invoiceSerial)
+    try {
+      const created = await paypal.createInvoice({ invoiceNumber: number, amountCents: card.amountCents, description, recipientEmail: order?.email, requestId })
+      const invoiceId = created.href.split('/').pop()
+      await paypal.sendInvoice(invoiceId, { requestId: `${requestId}s` })
+      return { number, invoiceId }
+    } catch (err) {
+      if (err.issue !== 'DUPLICATE_INVOICE_NUMBER') throw err
+      const found = (await paypal.searchInvoices({ invoiceNumber: number })).items?.[0]
+      const existing = found && (await paypal.getInvoice(found.id))
+      if (existing && isSameInvoice(existing, { amountCents: card.amountCents, email: order?.email, orderNo: ex.orderNo })) {
+        if (existing.status === 'DRAFT') await paypal.sendInvoice(existing.id, { requestId: `${requestId}s` })
+        return { number, invoiceId: existing.id }
+      }
+      close.invoiceSerial += 1
+    }
+  }
+  throw new HttpError(409, 'No free invoice number for this period.', 'INVOICE_NUMBER')
 }
 
 const refundNote = (ex) => (ex.code === 'COUPON_OVERCHARGE' ? 'Coupon discount applied after your purchase' : ex.code === 'DUPLICATE_PAYMENT' ? 'Refund of a duplicate payment' : 'Refund as promised by our support team')

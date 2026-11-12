@@ -1,0 +1,209 @@
+{
+  "scene": "daily-check",
+  "model": "claude-sonnet-5-5",
+  "backend": "account",
+  "recordedAt": "2026-11-12T05:42:53.045Z",
+  "messages": [
+    {
+      "id": "m3",
+      "text": "I'm so sorry about that. I've refunded your order, you'll see it in a few days.",
+      "ms": 5038,
+      "toolCalls": [
+        {
+          "name": "record_promise",
+          "input": {
+            "type": "refund",
+            "claimsDone": true,
+            "quote": "I've refunded your order, you'll see it in a few days."
+          }
+        }
+      ],
+      "modelText": "I recorded one promise from the message. It's a refund that the shop says is already done: \"I've refunded your order, you'll see it in a few days.\" The app will compute the amount."
+    },
+    {
+      "id": "m5",
+      "text": "Yes, your 10% code is applied to the order.",
+      "ms": 6124,
+      "toolCalls": [
+        {
+          "name": "record_promise",
+          "input": {
+            "type": "discount",
+            "claimsDone": true,
+            "quote": "Yes, your 10% code is applied to the order."
+          }
+        }
+      ],
+      "modelText": "I recorded one promise from the message: a discount, with the shop saying it's already done (\"Yes, your 10% code is applied to the order.\"). The app will work out the amount. Nothing else is needed from the docs tools that just appeared."
+    },
+    {
+      "id": "m7",
+      "text": "Refund request received, we will review it within a week.",
+      "ms": 4183,
+      "toolCalls": [
+        {
+          "name": "record_promise",
+          "input": {
+            "type": "none",
+            "quote": "Refund request received, we will review it within a week."
+          }
+        }
+      ],
+      "modelText": "I recorded the message as no promise. \"We will review it within a week\" only says the refund request will be looked at. It doesn't commit to a refund, a discount or a cancellation."
+    },
+    {
+      "id": "m9",
+      "text": "I'll look into it and get back to you.",
+      "ms": 4814,
+      "toolCalls": [
+        {
+          "name": "record_promise",
+          "input": {
+            "type": "none",
+            "quote": "I'll look into it and get back to you."
+          }
+        }
+      ],
+      "modelText": "I recorded the message as no promise. \"I'll look into it and get back to you\" only commits to checking, not to any refund, discount or cancellation."
+    },
+    {
+      "id": "m11",
+      "text": "You are right, sorry. Your 10% code is applied to the order now.",
+      "ms": 6436,
+      "toolCalls": [
+        {
+          "name": "record_promise",
+          "input": {
+            "type": "discount",
+            "claimsDone": true,
+            "quote": "Your 10% code is applied to the order now."
+          }
+        }
+      ],
+      "modelText": "I recorded one promise: the shop says the 10% discount code has already been applied to the order. It is marked as already done."
+    },
+    {
+      "id": "m13",
+      "text": "We can refund you if it doesn't arrive by Friday.",
+      "ms": 4504,
+      "toolCalls": [
+        {
+          "name": "record_promise",
+          "input": {
+            "type": "none",
+            "quote": "We can refund you if it doesn't arrive by Friday."
+          }
+        }
+      ],
+      "modelText": "I recorded the message as type `none`. \"We can refund you if it doesn't arrive by Friday\" is conditional, so it isn't a commitment to refund. The tool result will come back in the next turn."
+    },
+    {
+      "id": "m15",
+      "text": "Our refund policy allows returns within 30 days of delivery.",
+      "ms": 6598,
+      "toolCalls": [
+        {
+          "name": "record_promise",
+          "input": {
+            "type": "none",
+            "quote": "Our refund policy allows returns within 30 days of delivery."
+          }
+        }
+      ],
+      "modelText": "I recorded this message as type none. \"Our refund policy allows returns within 30 days of delivery.\" only describes the shop's policy. It doesn't say a refund, discount, or cancellation has been done or will be done."
+    },
+    {
+      "id": "m17",
+      "text": "Thanks for flagging this, we are checking the payment records.",
+      "ms": 4575,
+      "toolCalls": [
+        {
+          "name": "record_promise",
+          "input": {
+            "type": "none",
+            "quote": "Thanks for flagging this, we are checking the payment records."
+          }
+        }
+      ],
+      "modelText": "I recorded the message as no promise. The support agent only said they are checking the payment records, which is a review, not a commitment to refund, discount or cancel. There's nothing more to do for this message."
+    },
+    {
+      "id": "m18",
+      "text": "I've asked the warehouse to check the stock for your gift box.",
+      "ms": 5457,
+      "toolCalls": [
+        {
+          "name": "record_promise",
+          "input": {
+            "type": "none",
+            "claimsDone": false,
+            "quote": "I've asked the warehouse to check the stock for your gift box."
+          }
+        }
+      ],
+      "modelText": "I recorded the message as no promise. The support agent only said they've asked the warehouse to check the stock. That is a request to someone else, not a commitment to refund, discount or cancel."
+    },
+    {
+      "id": "m19",
+      "text": "Your order has shipped! Tracking is on its way by email.",
+      "ms": 4972,
+      "toolCalls": [
+        {
+          "name": "record_promise",
+          "input": {
+            "type": "none",
+            "quote": "Your order has shipped! Tracking is on its way by email."
+          }
+        }
+      ],
+      "modelText": "I recorded this message as type none. It says the order has shipped and tracking is coming, which is a shipping update. It doesn't promise a refund, discount, or cancellation."
+    },
+    {
+      "id": "m20",
+      "text": "I'll send you a refund if the item turns out to be damaged.",
+      "ms": 4809,
+      "toolCalls": [
+        {
+          "name": "record_promise",
+          "input": {
+            "type": "none",
+            "claimsDone": false,
+            "quote": "I'll send you a refund if the item turns out to be damaged."
+          }
+        }
+      ],
+      "modelText": "I recorded the message as no promise. The refund is conditional (\"if the item turns out to be damaged\"), so it isn't a commitment."
+    },
+    {
+      "id": "m22",
+      "text": "Done, your order is cancelled. No charge will be taken.",
+      "ms": 4933,
+      "toolCalls": [
+        {
+          "name": "record_promise",
+          "input": {
+            "type": "cancel",
+            "claimsDone": true,
+            "quote": "Done, your order is cancelled."
+          }
+        }
+      ],
+      "modelText": "I recorded one promise: the shop says the order is already cancelled, so the type is cancel and claimsDone is true. The sentence \"No charge will be taken.\" only describes the result of the cancellation, so I didn't record it as a separate promise."
+    },
+    {
+      "id": "m23",
+      "text": "Your phone order shipped today.",
+      "ms": 4316,
+      "toolCalls": [
+        {
+          "name": "record_promise",
+          "input": {
+            "type": "none",
+            "quote": "Your phone order shipped today."
+          }
+        }
+      ],
+      "modelText": "I recorded the message as type \"none\". \"Your phone order shipped today\" only reports a shipment. It doesn't promise a refund, discount, or cancellation."
+    }
+  ]
+}
